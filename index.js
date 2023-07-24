@@ -1,6 +1,21 @@
 const puppeteer = require("puppeteer");
+const mongoose = require("mongoose");
+const dotenv=require('dotenv').config()
 
 const QUERY_SEARCH = "estoicismo"
+
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+const productSchema = new mongoose.Schema({
+  title: String,
+  price: Number,
+  image: String,
+});
+
+const Product = mongoose.model("Product", productSchema);
 
 const scrapeProducts = async (query) => {
   const browser = await puppeteer.launch();
@@ -31,7 +46,22 @@ const scrapeProducts = async (query) => {
     });
     return results;
   });
-  console.log(products);
+
+  for (const product of products) {
+    const newProduct = new Product({
+      title: product.title,
+      price: product.price,
+      image: product.image,
+    });
+
+    try {
+      await newProduct.save();
+      console.log(`🤘 Product "${product.title}" saved to DB. `);
+    } catch (err) {
+      console.error(`❌ Error saving product "${product.title}" to DB:`, err);
+    }
+  }
+
   await browser.close();
 };
 
